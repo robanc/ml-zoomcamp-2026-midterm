@@ -8,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
 
@@ -41,6 +41,9 @@ CATEGORICAL_FEATURES = [
 with open(MODEL_PATH, "rb") as f:
     model = pickle.load(f)
 
+@app.route("/", methods=["GET"])
+def home():
+    return render_template("index.html")
 
 @app.route("/ping", methods=["GET"])
 def ping():

@@ -1,0 +1,223 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>4G/5G Signal Level Predictor</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f2f5fa;
+      color: #17243b;
+    }
+    .container {
+      max-width: 760px;
+      margin: 48px auto;
+      padding: 0 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 8px 28px rgba(25, 45, 80, .09);
+    }
+    h1 { margin-top: 0; font-size: 28px; }
+    .subtitle { color: #617087; line-height: 1.5; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+      margin: 28px 0;
+    }
+    label {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    input, select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font: inherit;
+      background: white;
+    }
+    input:focus, select:focus {
+      outline: 2px solid #2563eb;
+      outline-offset: 1px;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: #1d4ed8;
+      color: white;
+      border: 0;
+      border-radius: 9px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:hover { background: #1e40af; }
+    button:disabled { opacity: .6; cursor: wait; }
+    .result {
+      margin-top: 24px;
+      padding: 20px;
+      border-radius: 10px;
+      background: #eff6ff;
+      text-align: center;
+    }
+    .value {
+      font-size: 34px;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+    .error { background: #fef2f2; color: #991b1b; }
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 13px;
+      color: #64748b;
+    }
+    [hidden] { display: none !important; }
+    @media (max-width: 560px) {
+      .grid { grid-template-columns: 1fr; }
+      .card { padding: 22px; }
+      h1 { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <div class="card">
+      <h1>4G/5G Signal Level Predictor</h1>
+      <p class="subtitle">
+        Estimate mobile network signal strength using a trained
+        XGBoost regression model. Enter the measurement features below.
+      </p>
+
+      <form id="predictionForm">
+        <div class="grid">
+          <div>
+            <label for="Latitude">Latitude</label>
+            <input id="Latitude" type="number" step="any"
+                   min="-90" max="90" value="3.0678" required>
+          </div>
+          <div>
+            <label for="Longitude">Longitude</label>
+            <input id="Longitude" type="number" step="any"
+                   min="-180" max="180" value="101.6053" required>
+          </div>
+          <div>
+            <label for="Speed">Speed</label>
+            <input id="Speed" type="number" step="any"
+                   min="0" value="15" required>
+          </div>
+          <div>
+            <label for="Altitude">Altitude</label>
+            <input id="Altitude" type="number" step="any"
+                   value="28" required>
+          </div>
+          <div>
+            <label for="Operatorname">Mobile Operator</label>
+            <select id="Operatorname">
+              <option value="Operator A">Operator A</option>
+              <option value="Operator B">Operator B</option>
+              <option value="Operator C">Operator C</option>
+            </select>
+          </div>
+          <div>
+            <label for="NetworkTech">Network Technology</label>
+            <select id="NetworkTech">
+              <option value="5G">5G</option>
+              <option value="4G">4G</option>
+            </select>
+          </div>
+          <div>
+            <label for="Mobility">Mobility Scenario</label>
+            <select id="Mobility">
+              <option value="BRT">BRT</option>
+              <option value="Walk">Walk</option>
+              <option value="Shuttle">Shuttle</option>
+            </select>
+          </div>
+        </div>
+
+        <button id="predictButton" type="submit">
+          Predict Signal Level
+        </button>
+      </form>
+
+      <div id="result" class="result" role="status"
+           aria-live="polite" hidden>
+        <div id="resultLabel">Predicted Signal Level</div>
+        <div id="resultValue" class="value"></div>
+      </div>
+    </div>
+
+    <p class="footer">
+      ML Zoomcamp 2026 Midterm Project · XGBoost Regression
+    </p>
+  </main>
+
+  <script>
+    const form = document.getElementById("predictionForm");
+    const button = document.getElementById("predictButton");
+    const result = document.getElementById("result");
+    const resultLabel = document.getElementById("resultLabel");
+    const resultValue = document.getElementById("resultValue");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const numericFields = [
+        "Latitude", "Longitude", "Speed", "Altitude"
+      ];
+
+      const payload = {};
+
+      for (const field of numericFields) {
+        payload[field] = Number(document.getElementById(field).value);
+      }
+
+      for (const field of ["Operatorname", "NetworkTech", "Mobility"]) {
+        payload[field] = document.getElementById(field).value;
+      }
+
+      button.disabled = true;
+      button.textContent = "Predicting...";
+      result.hidden = true;
+      result.classList.remove("error");
+
+      try {
+        const response = await fetch("/predict", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Prediction failed");
+        }
+
+        resultLabel.textContent = "Predicted Signal Level";
+        resultValue.textContent =
+          `${Number(data.predicted_signal_level_dbm).toFixed(3)} dBm`;
+      } catch (error) {
+        result.classList.add("error");
+        resultLabel.textContent = "Unable to predict";
+        resultValue.textContent = error.message;
+      } finally {
+        result.hidden = false;
+        button.disabled = false;
+        button.textContent = "Predict Signal Level";
+      }
+    });
+  </script>
+</body>
+</html>

@@ -15,6 +15,7 @@ A machine learning regression project for predicting 4G/5G mobile network signal
 7. [Dependencies and Environment](#7-dependencies-and-environment)
 8. [Containerization](#8-containerization)
 9. [Cloud Deployment](#9-cloud-deployment)
+10. [Web Frontend](#10-web-frontend)
 
 ---
 
@@ -519,6 +520,7 @@ The prediction endpoint is documented in Section 6 – Model Deployment.
 | `notebook.ipynb` | EDA, experiments, model comparison, and tuning |
 | `train.py` | Reproducible model training |
 | `predict.py` | Flask prediction API |
+| `templates/index.html` | Browser frontend with HTML, CSS, and JavaScript |
 | `models/xgboost_signal_model.bin` | Exported trained model |
 | `requirements.txt` | Python dependencies |
 | `Dockerfile` | Containerized prediction service |
@@ -546,6 +548,7 @@ The model is loaded when the application starts, so individual prediction reques
 
 | Method | Endpoint | Description |
 |---|---|---|
+| GET | `/` | Browser-based signal prediction frontend |
 | GET | `/ping` | Health check |
 | POST | `/predict` | Predict mobile network signal level |
 
@@ -837,6 +840,8 @@ COPY predict.py .
 
 COPY models/xgboost_signal_model.bin models/xgboost_signal_model.bin
 
+COPY templates/ templates/
+
 EXPOSE 9696
 
 CMD ["waitress-serve", "--host=0.0.0.0", "--port=9696", "predict:app"]
@@ -1027,8 +1032,13 @@ The initial deployment completed successfully in approximately 2 minutes and 26 
 
 | Method | Endpoint | Purpose |
 |---|---|---|
+| GET | `/` | Browser-based 4G/5G signal prediction frontend |
 | GET | `/ping` | Verify service health |
 | POST | `/predict` | Predict mobile network signal level |
+
+**Web application:**
+
+https://ml-zoomcamp-2026-midterm.onrender.com/
 
 **Health endpoint:**
 
@@ -1109,3 +1119,114 @@ The project demonstrates a complete machine learning workflow:
 **Data exploration → Model training → Hyperparameter tuning → Model export → Flask API → Docker containerization → Cloud deployment**
 
 The trained XGBoost model is accessible through a public REST API, enabling predictions without requiring users to install Python, download the dataset, or retrain the model.
+
+
+
+
+---
+
+## 10. Web Frontend
+
+### 10.1 Overview
+
+The project includes a browser-based frontend for predicting 4G/5G mobile network signal levels.
+
+The frontend is implemented using HTML, CSS, and JavaScript, with Flask serving the interface and handling prediction requests.
+
+Users can generate predictions without manually constructing JSON requests or using API testing tools.
+
+### 10.2 Web Application
+
+The application provides seven input fields:
+
+| Feature | Input Type |
+|---|---|
+| Latitude | Numeric |
+| Longitude | Numeric |
+| Speed | Numeric |
+| Altitude | Numeric |
+| Operatorname | Dropdown (Operator A, Operator B, Operator C) |
+| NetworkTech | Dropdown (4G, 5G) |
+| Mobility | Dropdown (Walk, BRT, Shuttle) |
+
+Users enter their measurement characteristics and click **Predict Signal Level**.
+
+The frontend sends a JSON request to the existing `/predict` endpoint and displays the predicted signal level in dBm.
+
+### 10.3 Run the Frontend Locally
+
+Start the Flask application:
+
+```powershell
+python predict.py
+```
+
+Open the following URL in a browser:
+
+http://localhost:9696/
+
+The application displays the prediction form.
+
+### 10.4 Run the Frontend with Docker
+
+Build the Docker image:
+
+```powershell
+docker build -t ml-zoomcamp-midterm-frontend .
+```
+
+Run the container:
+
+```powershell
+docker run --rm -d --name ml-midterm-frontend-test -p 9697:9696 ml-zoomcamp-midterm-frontend
+```
+
+Open the Docker-hosted application:
+
+http://localhost:9697/
+
+### 10.5 Example Prediction
+
+The frontend was tested using these input values:
+
+| Feature | Value |
+|---|---|
+| Latitude | 3.0678 |
+| Longitude | 101.6053 |
+| Speed | 15 |
+| Altitude | 28 |
+| Operatorname | Operator A |
+| NetworkTech | 5G |
+| Mobility | BRT |
+
+**Predicted signal level: -97.588 dBm**
+
+The browser prediction matched the results from the local Flask API and Dockerized application.
+
+The prediction represents a model-generated estimate rather than a live radio-frequency measurement.
+
+### 10.6 Cloud Frontend
+
+The frontend is designed to be accessible through the same Render web service as the prediction API:
+
+https://ml-zoomcamp-2026-midterm.onrender.com/
+
+The updated Dockerfile includes the `templates/` directory, allowing Flask to serve the browser interface in the deployed container.
+
+Cloud frontend availability will be verified after the updated application is deployed to Render.
+
+### 10.7 Frontend Verification
+
+The following tests have been completed:
+
+| Test | Result |
+|---|---|
+| Local browser interface loads | Passed |
+| Seven input fields display correctly | Passed |
+| Browser submits prediction request | Passed |
+| Local prediction returns -97.588 dBm | Passed |
+| Docker image builds successfully | Passed |
+| Docker browser interface loads | Passed |
+| Docker prediction returns -97.588 dBm | Passed |
+
+The frontend extends the existing REST API without changing the trained XGBoost model or its prediction logic.

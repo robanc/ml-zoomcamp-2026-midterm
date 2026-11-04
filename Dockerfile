@@ -9,6 +9,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY predict.py .
 COPY models/xgboost_signal_model.bin models/xgboost_signal_model.bin
+COPY templates/ templates/
 
 EXPOSE 9696
 
